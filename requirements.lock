@@ -37,7 +37,8 @@ tzdata==2025.3 \
     --hash=sha256:06a47e5700f3081aab02b2e513160914ff0694bce9947d6b76ebd6bf57cfc5d1
 
 pyyaml==6.0.3 \
-    --hash=sha256:4a2e8cebe2ff6ab7d1050ecd59c25d4c8bd7e6f400f5f82b96557ac0abafd0ac
+    --hash=sha256:4a2e8cebe2ff6ab7d1050ecd59c25d4c8bd7e6f400f5f82b96557ac0abafd0ac \
+    --hash=sha256:2283a07e2c21a2aa78d9c4442724ec1eb15f5e42a723b99cb3d822d48f5f7ad1
 
 # --- Transitive dependencies (pulled by requests) ---
 
@@ -51,7 +52,8 @@ idna==3.11 \
     --hash=sha256:771a87f49d9defaf64091e6e6fe9c18d4833f140bd19464795bc32d966ca37ea
 
 charset-normalizer==3.4.6 \
-    --hash=sha256:74119174722c4349af9708993118581686f343adc1c8c9c007d59be90d077f3f
+    --hash=sha256:74119174722c4349af9708993118581686f343adc1c8c9c007d59be90d077f3f \
+    --hash=sha256:11afb56037cbc4b1555a34dd69151e8e069bee82e613a73bef6e714ce733585f
 
 # --- Transitive dependencies (pulled by python-dateutil) ---
 
