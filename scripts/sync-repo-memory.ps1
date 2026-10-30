@@ -55,6 +55,10 @@
     Pin explicitly to skip the prompt in scheduled tasks or CI.
 
 .NOTES
+    On macOS, VS Code storage is under ~/Library/Application Support/.
+    On Linux, it is under $XDG_CONFIG_HOME (or ~/.config when unset).
+    The Copilot CLI store is under ~/.copilot/memories on all platforms.
+
     SECURITY:
     Memory is loaded into Copilot Chat as authoritative instructions with access
     to MCP tools (Sentinel, Graph, Azure). Anything synced via -Direction
@@ -104,6 +108,21 @@ if ($Direction -in 'FromBackup','Both' -and -not $Force -and -not $WhatIfPrefere
 
 $WorkspaceRoot = (Resolve-Path (Split-Path -Parent $PSScriptRoot)).Path
 
+$CodeDataRoot = if ($env:APPDATA) {
+    $env:APPDATA
+} elseif ($IsMacOS) {
+    Join-Path $HOME 'Library/Application Support'
+} elseif ($env:XDG_CONFIG_HOME) {
+    $env:XDG_CONFIG_HOME
+} else {
+    Join-Path $HOME '.config'
+}
+$PathComparison = if ([System.IO.Path]::DirectorySeparatorChar -eq '\') {
+    [StringComparison]::OrdinalIgnoreCase
+} else {
+    [StringComparison]::Ordinal
+}
+
 $RepoMemorySubpath = 'GitHub.copilot-chat\memory-tool\memories\repo'
 
 # --- Detect VS Code variant (Stable vs Insiders) ---
@@ -117,8 +136,8 @@ function Get-WorkspaceMatches {
         try {
             $cfg = Get-Content $workspaceJson -Raw | ConvertFrom-Json
             if ($cfg.folder) {
-                $decoded = [System.Uri]::UnescapeDataString($cfg.folder) -replace '^file:///','' -replace '/','\'
-                if ($decoded.TrimEnd('\') -ieq $WorkspaceRootPath.TrimEnd('\')) {
+                $decoded = ([System.Uri]$cfg.folder).LocalPath
+                if ($decoded.TrimEnd([char[]]'\/').Equals($WorkspaceRootPath.TrimEnd([char[]]'\/'), $PathComparison)) {
                     $found += $hash
                 }
             }
@@ -144,7 +163,7 @@ $VariantCandidates = switch ($Variant) {
 
 $VariantMatches = [ordered]@{}
 foreach ($v in $VariantCandidates) {
-    $storage = Join-Path $env:APPDATA "$v\User\workspaceStorage"
+    $storage = Join-Path $CodeDataRoot "$v\User\workspaceStorage"
     $hashes = Get-WorkspaceMatches -StorageRoot $storage -WorkspaceRootPath $WorkspaceRoot
     if ($hashes.Count -gt 0) { $VariantMatches[$v] = $hashes }
 }
@@ -152,7 +171,7 @@ foreach ($v in $VariantCandidates) {
 $VsCodeAvailable = $VariantMatches.Count -gt 0
 
 if (-not $VsCodeAvailable) {
-    $searched = ($VariantCandidates | ForEach-Object { "  - " + (Join-Path $env:APPDATA "$_\User\workspaceStorage") }) -join "`n"
+    $searched = ($VariantCandidates | ForEach-Object { "  - " + (Join-Path $CodeDataRoot "$_\User\workspaceStorage") }) -join "`n"
     if ($IncludeCopilotCli) {
         Write-Warning "No VS Code workspaceStorage hash matched $WorkspaceRoot. Searched:`n$searched`nProceeding with Copilot CLI tiers only (-IncludeCopilotCli)."
     } else {
@@ -194,7 +213,7 @@ if ($VsCodeAvailable) {
         }
     }
 
-    $WorkspaceStorageRoot = Join-Path $env:APPDATA "$VsCodeVariant\User\workspaceStorage"
+    $WorkspaceStorageRoot = Join-Path $CodeDataRoot "$VsCodeVariant\User\workspaceStorage"
     $MatchingHashes = $VariantMatches[$VsCodeVariant]
 
     Write-Host "VS Code variant: $VsCodeVariant" -ForegroundColor DarkGray
@@ -219,7 +238,7 @@ if ($VsCodeAvailable) {
     if ($IncludeUserMemory) {
         $Tiers += @{
             Label   = 'user'
-            AppData = Join-Path $env:APPDATA "$VsCodeVariant\User\globalStorage\github.copilot-chat\memory-tool\memories"
+            AppData = Join-Path $CodeDataRoot "$VsCodeVariant\User\globalStorage\github.copilot-chat\memory-tool\memories"
             Backup  = Join-Path $WorkspaceRoot 'notes\memory\user'
             Scope   = 'GLOBAL (every workspace on this machine)'
             Recurse = $true
@@ -231,7 +250,7 @@ if ($IncludeCopilotCli) {
     # GitHub Copilot CLI / desktop app keeps a SEPARATE, machine-global memory store.
     # Both CLI tiers share the same notes\memory backup as the VS Code tiers, so the
     # backup acts as a common hub that keeps VS Code and the Copilot CLI consistent.
-    $CliRoot = Join-Path $env:USERPROFILE '.copilot\memories'
+    $CliRoot = Join-Path $HOME '.copilot\memories'
     $Tiers += @{
         Label   = 'cli-repo'
         AppData = Join-Path $CliRoot 'repo'
@@ -272,8 +291,8 @@ function Test-PathContained {
     param([string]$Candidate, [string]$Root)
     try {
         $full = [System.IO.Path]::GetFullPath($Candidate)
-        $rootFull = [System.IO.Path]::GetFullPath($Root).TrimEnd('\') + '\'
-        return $full.StartsWith($rootFull, [StringComparison]::OrdinalIgnoreCase)
+        $rootFull = [System.IO.Path]::GetFullPath($Root).TrimEnd([char[]]'\/') + [System.IO.Path]::DirectorySeparatorChar
+        return $full.StartsWith($rootFull, $PathComparison)
     } catch {
         return $false
     }
@@ -362,7 +381,7 @@ function Sync-Tier {
                 $Stats.Excluded++
                 return
             }
-            $rel = $_.FullName.Substring($AppDataFull.Length).TrimStart('\')
+            $rel = $_.FullName.Substring($AppDataFull.Length).TrimStart([char[]]'\/')
             $tgt = Join-Path $BackupFull $rel
             Copy-IfNewer -Source $_.FullName -Target $tgt -TargetRoot $BackupFull -Label '->'
         }
@@ -379,7 +398,7 @@ function Sync-Tier {
                 $Stats.Excluded++
                 return
             }
-            $rel = $_.FullName.Substring($BackupFull.Length).TrimStart('\')
+            $rel = $_.FullName.Substring($BackupFull.Length).TrimStart([char[]]'\/')
             $tgt = Join-Path $AppDataFull $rel
             Copy-IfNewer -Source $_.FullName -Target $tgt -TargetRoot $AppDataFull -Label '<-'
         }
