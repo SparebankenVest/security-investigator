@@ -95,10 +95,11 @@ EmailEvents
     Blocked = countif(DeliveryAction == "Blocked"),
     Delivered = countif(DeliveryAction == "Delivered"),
     Junked = countif(DeliveryAction == "Junked"),
+    PhishingTraining = countif(OrgLevelPolicy == "Phishing simulation"),
     DistinctSenders = dcount(SenderFromAddress),
     DistinctRecipients = dcount(RecipientEmailAddress)
 | project TotalInbound, Clean, Phish, Malware, Spam, HighConfPhish,
-    Blocked, Delivered, Junked, DistinctSenders, DistinctRecipients
+    Blocked, Delivered, Junked, PhishingTraining, DistinctSenders, DistinctRecipients
 ```
 
 ### 1.2 Email Volume Trend by Day and Direction
@@ -128,6 +129,7 @@ adaptation_notes: "Aggregation query — top sender domains by volume with take 
 EmailEvents
 | where TimeGenerated > ago(30d)
 | where EmailDirection == "Inbound"
+| where OrgLevelPolicy != "Phishing simulation"
 | summarize
     EmailCount = count(),
     PhishCount = countif(ThreatTypes has "Phish"),
@@ -154,6 +156,7 @@ adaptation_notes: "Row-level phishing listing, but redundant with existing MDO p
 EmailEvents
 | where TimeGenerated > ago(30d)
 | where ThreatTypes has "Phish"
+| where OrgLevelPolicy != "Phishing simulation"
 | project TimeGenerated, Subject, SenderFromAddress, SenderFromDomain,
     RecipientEmailAddress, DeliveryAction, DeliveryLocation,
     LatestDeliveryAction, LatestDeliveryLocation,
@@ -174,6 +177,7 @@ adaptation_notes: "Aggregation query — top phishing sender domains. Hunting/tr
 EmailEvents
 | where TimeGenerated > ago(30d)
 | where ThreatTypes has "Phish"
+| where OrgLevelPolicy != "Phishing simulation"
 | summarize Count = count() by SenderFromDomain
 | top 10 by Count
 ```
@@ -190,6 +194,7 @@ adaptation_notes: "Aggregation query — summarizes phishing count per recipient
 EmailEvents
 | where TimeGenerated > ago(30d)
 | where ThreatTypes has "Phish" and EmailDirection == "Inbound"
+| where OrgLevelPolicy != "Phishing simulation"
 | summarize PhishCount = count(), DistinctSenders = dcount(SenderFromAddress) by RecipientEmailAddress
 | order by PhishCount desc
 | take 15
@@ -214,6 +219,7 @@ responseActions: "Purge email from mailbox via manual remediation. Revoke user s
 EmailEvents
 | where TimeGenerated > ago(30d)
 | where ThreatTypes has "Phish"
+| where OrgLevelPolicy != "Phishing simulation"
 | where DeliveryAction == "Delivered" or LatestDeliveryAction == "Delivered"
 | project TimeGenerated, Subject, SenderFromAddress, RecipientEmailAddress,
     DeliveryAction, LatestDeliveryAction, DeliveryLocation, LatestDeliveryLocation,
@@ -241,6 +247,7 @@ adaptation_notes: "The UrlCount > 3 branch catches non-phishing emails with many
 EmailEvents
 | where TimeGenerated > ago(30d)
 | where EmailDirection == "Inbound"
+| where OrgLevelPolicy != "Phishing simulation"
 | where IsFirstContact == true
 | where ThreatTypes has "Phish" or UrlCount > 3
 | project TimeGenerated, Subject, SenderFromAddress, SenderFromDomain,
@@ -303,6 +310,7 @@ adaptation_notes: "Multi-stage investigation chain — uses let block with cross
 let PhishedUsers = EmailEvents
 | where TimeGenerated > ago(30d)
 | where ThreatTypes has "Phish" and EmailDirection == "Inbound"
+| where OrgLevelPolicy != "Phishing simulation"
 | where DeliveryAction != "Blocked"
 | distinct RecipientEmailAddress;
 // Step 2: Check for anomalous token risk events for those users
@@ -327,6 +335,7 @@ adaptation_notes: "Cross-table correlation (EmailEvents → OfficeActivity). Off
 let PhishRecipients = EmailEvents
 | where TimeGenerated > ago(30d)
 | where ThreatTypes has "Phish" and EmailDirection == "Inbound"
+| where OrgLevelPolicy != "Phishing simulation"
 | where DeliveryAction != "Blocked"
 | project RecipientEmailAddress, PhishTime = TimeGenerated;
 OfficeActivity
@@ -457,6 +466,7 @@ adaptation_notes: "Aggregation query — summarizes override/allow counts by pol
 ```kql
 EmailEvents
 | where TimeGenerated > ago(30d)
+| where OrgLevelPolicy != "Phishing simulation"
 | where OrgLevelAction == "Allow" and isnotempty(ThreatTypes)
 | summarize Count = count() by ThreatTypes, OrgLevelPolicy, DetectionMethods
 | order by Count desc
@@ -573,6 +583,7 @@ adaptation_notes: "Aggregation query — summarizes URL domain frequency. Huntin
 ```kql
 EmailEvents
 | where TimeGenerated > ago(30d)
+| where OrgLevelPolicy != "Phishing simulation"
 | where EmailDirection == "Inbound" and UrlCount > 0
 | join kind=inner (
     EmailUrlInfo
@@ -598,6 +609,7 @@ adaptation_notes: "Hunting query with heuristic thresholds (strlen > 200, contai
 ```kql
 EmailUrlInfo
 | where TimeGenerated > ago(30d)
+| where OrgLevelPolicy != "Phishing simulation"
 | where strlen(Url) > 200
 | join kind=inner (
     EmailEvents
@@ -688,6 +700,7 @@ adaptation_notes: "Investigation-only join query. Requires delivered phishing em
 let DeliveredPhish = EmailEvents
 | where TimeGenerated > ago(30d)
 | where ThreatTypes has "Phish"
+| where OrgLevelPolicy != "Phishing simulation"
 | where DeliveryAction == "Delivered"
 | project NetworkMessageId, RecipientEmailAddress, SenderFromAddress, Subject;
 UrlClickEvents
@@ -894,6 +907,7 @@ let PreDelivery = toscalar(
     | where TimeGenerated between (_startTime .. _endTime)
         and EmailDirection == "Inbound"
         and (ThreatTypes contains "Phish" or ThreatTypes contains "Malware")
+    | where OrgLevelPolicy != "Phishing simulation"
     | where not(DeliveryAction == "Blocked" and DeliveryLocation in ("Dropped", "Failed"))
     | summarize PreDelivery = count()
 );
@@ -987,6 +1001,7 @@ adaptation_notes: "Cross-table time-bounded join (EmailEvents → DeviceLogonEve
 EmailEvents
 | where TimeGenerated > ago(7d)
 | where ThreatTypes has "Phish" and EmailDirection == "Inbound"
+| where OrgLevelPolicy != "Phishing simulation"
 | where DeliveryAction != "Blocked"
 | project EmailTime = TimeGenerated, Subject, SenderFromAddress,
     AccountName = tostring(split(RecipientEmailAddress, "@")[0])
