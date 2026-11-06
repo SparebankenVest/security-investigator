@@ -4,7 +4,7 @@
 # Slim version: title, path, domains, mitre, prompt only.
 # Use --full flag to generate the verbose manifest with tables, keywords, platform, timeframe.
 
-generated: '2026-09-25T18:48:31Z'
+generated: '2026-11-06T22:04:47Z'
 valid_domains:
 - admin
 - cloud
@@ -1282,3 +1282,18 @@ queries:
   - T1105
   - T1021.006
   - T1547.001
+- title: 'Hunt pack: Backdoored Claude Code Extension: From Editor to SSH Tunnel'
+  path: queries/threat-intelligence/2026-10/claude-code-extension-backdoor-hunt-pack.md
+- title: VOLTA Infostealer — LLM-Driven Victim Prioritization via OpenRouter
+  path: queries/threat-intelligence/2026-10/volta_infostealer_llm_victim_profiling.md
+  domains:
+  - endpoint
+  mitre:
+  - T1555.003
+  - T1539
+  - T1552
+  - T1005
+  - T1560
+  - T1041
+  - T1102
+  - T1070.004
