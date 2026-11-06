@@ -4,7 +4,7 @@
 # Slim version: title, path, domains, mitre, prompt only.
 # Use --full flag to generate the verbose manifest with tables, keywords, platform, timeframe.
 
-generated: '2026-09-25T18:48:31Z'
+generated: '2026-11-06T21:54:41Z'
 valid_domains:
 - admin
 - cloud
@@ -1282,3 +1282,17 @@ queries:
   - T1105
   - T1021.006
   - T1547.001
+- title: 'Hunt pack: Backdoored Claude Code Extension: From Editor to SSH Tunnel'
+  path: queries/threat-intelligence/2026-10/claude-code-extension-backdoor-hunt-pack.md
+- title: Fake-Download Campaign — Trojanized Inno Setup Installers Delivering Monetization Payloads
+  path: queries/threat-intelligence/2026-11/fake_download_inno_offer_monetization.md
+  domains:
+  - endpoint
+  mitre:
+  - T1204.002
+  - T1053.005
+  - T1036
+  - T1564.003
+  - T1071.001
+  - T1105
+  - T1496
