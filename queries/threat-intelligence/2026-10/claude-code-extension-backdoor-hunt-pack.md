@@ -10,6 +10,22 @@ Observed in this lead's logs. Read each item's context and check your own baseli
 
 | Type | Value | Where it appeared |
 | --- | --- | --- |
+## Quick Reference — Query Index
+
+| # | Query | Use Case | Key Table |
+|---|-------|----------|-----------|
+| — | [Shell commands started by an editor extension host](#shell-commands-started-by-an-editor-extension-host) | Investigation | — |
+| — | [Apple-named user LaunchAgents written by non-Apple processes](#apple-named-user-launchagents-written-by-non-apple-processes) | Investigation | — |
+| — | [launchd running a hidden script from ~/.config](#launchd-running-a-hidden-script-from-config) | Investigation | — |
+| — | [Base64 decoding by a hidden ~/.config script](#base64-decoding-by-a-hidden-config-script) | Investigation | — |
+| — | [ssh remote forwards back to the local SSH service](#ssh-remote-forwards-back-to-the-local-ssh-service) | Investigation | — |
+| — | [ssh connections to public addresses on port 22](#ssh-connections-to-public-addresses-on-port-22) | Investigation | — |
+| — | [Retry sleeps inside a hidden ~/.config script](#retry-sleeps-inside-a-hidden-config-script) | Investigation | — |
+| — | [Extension host connections to public IPs on non-web ports](#extension-host-connections-to-public-ips-on-non-web-ports) | Investigation | — |
+| — | [macOS re-reading user LaunchAgents and rewriting background items](#macos-re-reading-user-launchagents-and-rewriting-background-items) | Investigation | — |
+| — | [Sigma alerts on the chain](#sigma-alerts-on-the-chain) | Detection | — |
+
+
 | File path | `~/Library/LaunchAgents/com.apple.sysmond.plist` | User LaunchAgent rewritten by Code Helper (Plugin) at 00:38:28.3236, label com.apple.sysmond, RunAtLoad and KeepAlive. Its size and hash vary with the user's home path. |
 | File path | `~/.config/.smt` | Hidden shell script written by the extension host and run by launchd as /bin/sh ~/.config/.smt. Its size and hash vary with the home path. |
 | File path | `~/.config/.smtk` | Private key written by openssl base64 -d -A in the worker, set to mode 600 and passed to ssh with -i. |
