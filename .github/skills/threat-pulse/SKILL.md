@@ -1002,6 +1002,7 @@ DeviceProcessEvents
 EmailEvents
 | where Timestamp > ago(7d)
 | where EmailDirection == "Inbound"
+| where OrgLevelPolicy !contains "Phishing Simulation"
 | summarize
     TotalInbound = count(),
     Clean = countif(isempty(ThreatTypes)),
